@@ -200,7 +200,7 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
 .empty-text{color:var(--text-tertiary);font-size:.8rem;margin-bottom:20px}
 
 /* === TOAST === */
-.toast-area{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 8px);left:16px;right:16px;z-index:400;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-area{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 8px);left:16px;right:16px;z-index:600;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{padding:12px 16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.8rem;color:var(--text-primary);box-shadow:0 8px 32px rgba(0,0,0,.2);animation:toastIn .3s ease;pointer-events:auto}
 .toast.success{border-left:3px solid var(--success)}.toast.error{border-left:3px solid var(--danger)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -376,6 +376,7 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
     </div>
     <div class="toolbar">
       <select class="toolbar-sel" onchange="execBlock(this.value);this.selectedIndex=0"><option value="">¶</option><option value="p">P</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="blockquote">Quote</option><option value="pre">Code</option></select>
+      <select class="toolbar-sel" onchange="execFontSize(this.value);this.selectedIndex=0"><option value="">Aa</option><option value=".75rem">Small</option><option value="1rem">Normal</option><option value="1.25rem">Large</option><option value="1.6rem">Huge</option></select>
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" onclick="execCmd('bold')"><b>B</b></button>
       <button class="toolbar-btn" onclick="execCmd('italic')"><i>I</i></button>
@@ -591,7 +592,7 @@ function rt(h){return Math.max(1,Math.round(wc(h)/200))}
 function exc(h,m=140){const x=h.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();return x.length>m?x.substring(0,m)+'…':x}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function slugify(s){return s.toLowerCase().replace(/[^a-z0-9а-яё]+/gi,'-').replace(/^-|-$/g,'')}
-function toast(m,type='success'){const a=document.getElementById('toastArea'),e=document.createElement('div');e.className='toast '+type;e.textContent=m;a.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),300)},2500)}
+function toast(m,type='success'){const a=document.getElementById('toastArea'),e=document.createElement('div');e.className='toast '+type;e.textContent=m;a.appendChild(e);setTimeout(()=>{e.style.opacity='0';setTimeout(()=>e.remove(),300)},4000)}
 
 // Sheets
 function openNewSheet(){document.getElementById('sheetOverlay').classList.add('active');setTimeout(()=>document.getElementById('newSheet').classList.add('active'),10)}
@@ -624,7 +625,7 @@ function renderPages(area){let f=[...pages];if(currentSearch){const q=currentSea
 if(!f.length){area.innerHTML=`<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><div class="empty-title">${currentSearch?t('noResults'):t('noPages')}</div><div class="empty-text">${currentSearch?t('noResultsDesc'):t('noPagesDesc')}</div></div>`;return}
 area.innerHTML=f.map(p=>{const dr=p.status==='draft';return`<div class="page-card" onclick="viewPage('${p.id}')"><div class="page-card-order">${p.order||0}</div><div class="page-card-info"><div class="page-card-title">${esc(p.title)}</div><div class="page-card-meta">${p.slug?`<span class="page-card-slug">/${esc(p.slug)}</span>`:''}<span>${fmtDate(p.updatedAt)}</span>${dr?`<span style="color:var(--warning);font-weight:700">${t('draft')}</span>`:''}</div></div><div class="card-actions" onclick="event.stopPropagation()"><button onclick="openEditor('page','${p.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="del-btn" onclick="confirmDel('page','${p.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>`}).join('')}
 
-function renderAll(){applyLang();renderFeed();renderPageNav();renderBrowsePanels();updateThemeSwitch();document.getElementById('statPosts').textContent=posts.length;document.getElementById('statPages').textContent=pages.length}
+function renderAll(){applyLang();renderFeed();renderPageNav();renderBrowsePanels();updateThemeSwitch();document.getElementById('statPosts').textContent=posts.length;document.getElementById('statPages').textContent=pages.length;applyNavWrappers()}
 
 // Browse Panels (Categories & Tags)
 function toggleBrowse(id){document.getElementById(id).classList.toggle('open')}
@@ -715,8 +716,74 @@ function setCoverUrl(){const u=document.getElementById('coverUrlInput').value.tr
 function removeCover(){coverData=null;document.getElementById('coverPreview').style.display='none'}
 
 // Toolbar
-function execCmd(c,v=null){document.execCommand(c,false,v);document.getElementById('editorContent').focus()}
-function execBlock(tag){if(!tag)return;document.execCommand('formatBlock',false,tag);document.getElementById('editorContent').focus()}
+// On mobile, tapping a toolbar button steals focus and collapses the selection.
+// Save the selection before the button tap, restore it before executing the command.
+let savedRange=null;
+document.getElementById('editorContent').addEventListener('mousedown',()=>{savedRange=null});
+document.getElementById('editorContent').addEventListener('keyup',()=>{savedRange=null});
+document.getElementById('editorContent').addEventListener('blur',()=>{
+  const sel=window.getSelection();
+  if(sel&&sel.rangeCount>0)savedRange=sel.getRangeAt(0).cloneRange();
+});
+
+function restoreSelection(){
+  if(!savedRange)return;
+  const sel=window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+}
+
+function execCmd(c,v=null){
+  const editor=document.getElementById('editorContent');
+  editor.focus();
+  restoreSelection();
+  document.execCommand(c,false,v);
+  savedRange=null;
+}
+
+function execBlock(tag){
+  if(!tag)return;
+  const editor=document.getElementById('editorContent');
+  editor.focus();
+  restoreSelection();
+  document.execCommand('formatBlock',false,tag);
+  savedRange=null;
+}
+
+function execFontSize(size){
+  if(!size)return;
+  const editor=document.getElementById('editorContent');
+  editor.focus();
+  restoreSelection();
+  const sel=window.getSelection();
+  if(!sel||sel.rangeCount===0)return;
+  const range=sel.getRangeAt(0);
+  if(range.collapsed){
+    // No selection — just set a data attribute the editor can use going forward
+    // (Can't apply font size to a collapsed cursor via execCommand cleanly)
+    savedRange=null;
+    return;
+  }
+  // Wrap selected content in a span with font-size style
+  const span=document.createElement('span');
+  span.style.fontSize=size;
+  try{
+    range.surroundContents(span);
+  }catch(e){
+    // surroundContents fails if selection crosses element boundaries
+    // Fall back to extractContents + insertNode
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+  }
+  // Move cursor after the span
+  const newRange=document.createRange();
+  newRange.setStartAfter(span);
+  newRange.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+  savedRange=null;
+}
 function insertLink(){const u=prompt('URL:');if(u)execCmd('createLink',u)}
 
 // Media insertion — bottom sheets
@@ -794,15 +861,18 @@ async function requestPersistentStorage(){
   }
   const already=await navigator.storage.persisted();
   if(already){
-    toast(lang==='ru'?'Хранилище уже защищено ✓':'Storage is already protected ✓');
+    // Update the row label permanently so user can see the status without a toast
     updatePersistDisplay();
+    const sub=document.getElementById('persistSub');
+    if(sub)sub.style.color='var(--accent)';
+    toast(lang==='ru'?'✅ Хранилище уже защищено — данные в безопасности':'✅ Already protected — your data is safe');
     return;
   }
   const granted=await navigator.storage.persist();
   if(granted){
-    toast(lang==='ru'?'Хранилище защищено! Данные не будут удалены автоматически.':'Storage protected! Data won\'t be auto-deleted.');
+    toast(lang==='ru'?'✅ Хранилище защищено! Данные не будут удалены автоматически.':'✅ Storage protected! Data won\'t be auto-deleted.');
   }else{
-    toast(lang==='ru'?'Браузер отклонил запрос. Регулярно делайте экспорт!':'Browser denied the request. Export regularly as backup!','error');
+    toast(lang==='ru'?'⚠️ Браузер отклонил запрос. Регулярно делайте экспорт!':'⚠️ Browser denied. Export regularly as backup!','error');
   }
   updatePersistDisplay();
 }
@@ -868,12 +938,13 @@ window.addEventListener('popstate',()=>{if(document.getElementById('editorScreen
 let openEditorNav=openEditor,openSettingsNav=openSettings;
 openEditorNav=function(mode,id){history.pushState({screen:'editor'},'');openEditor(mode,id)};
 openSettingsNav=function(){history.pushState({screen:'settings'},'');openSettings()};
-// Replace DOM onclick references with nav-wrapped versions
-document.querySelectorAll('[onclick]').forEach(el=>{
-  const oc=el.getAttribute('onclick');
-  if(oc&&oc.includes('openEditor('))el.setAttribute('onclick',oc.replace(/openEditor\(/g,'openEditorNav('));
-  if(oc&&oc.includes('openSettings()'))el.setAttribute('onclick',oc.replace(/openSettings\(\)/g,'openSettingsNav()'));
-});
+function applyNavWrappers(){
+  document.querySelectorAll('[onclick]').forEach(el=>{
+    const oc=el.getAttribute('onclick');
+    if(oc&&oc.includes('openEditor('))el.setAttribute('onclick',oc.replace(/openEditor\(/g,'openEditorNav('));
+    if(oc&&oc.includes('openSettings()'))el.setAttribute('onclick',oc.replace(/openSettings\(\)/g,'openSettingsNav()'));
+  });
+}
 
 document.documentElement.setAttribute('data-theme',theme);
 
@@ -885,6 +956,7 @@ document.documentElement.setAttribute('data-theme',theme);
     console.error('DB load failed, falling back to empty state',e);
   }
   renderAll();
+  applyNavWrappers(); // must run after renderAll so dynamic card buttons are in the DOM
   updateStorageDisplay();
   updatePersistDisplay();
   updateLastExportDisplay();
@@ -893,31 +965,14 @@ document.documentElement.setAttribute('data-theme',theme);
   setTimeout(checkBackupReminder, 1500);
 })();
 
-// ===== PWA: INJECT MANIFEST =====
-// Chrome ignores data: URI manifests for PWA install — must be a blob: URL
+// ===== PWA: INJECT MANIFEST LINK =====
+// Points to manifest.json which must be uploaded alongside the HTML file on GitHub
 (function injectManifest(){
-  const iconSvg=`<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%23080b14'/><text x='50%25' y='54%25' font-family='Georgia,serif' font-size='200' font-weight='bold' fill='%2300e5ff' text-anchor='middle' dominant-baseline='middle'>MS</text></svg>`;
-  const iconUrl='data:image/svg+xml,'+iconSvg;
-  const manifest={
-    name:'MySpace CMS',
-    short_name:'MySpace',
-    description:'Your personal mobile content management system',
-    start_url:location.pathname+location.search,
-    scope:location.pathname.replace(/[^/]*$/,''),
-    display:'standalone',
-    orientation:'portrait-primary',
-    background_color:'#080b14',
-    theme_color:'#080b14',
-    categories:['productivity','utilities'],
-    icons:[
-      {src:iconUrl,sizes:'192x192',type:'image/svg+xml',purpose:'any maskable'},
-      {src:iconUrl,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}
-    ]
-  };
-  const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-  const url=URL.createObjectURL(blob);
+  // Only inject if not already present as a static link in <head>
+  if(document.querySelector('link[rel="manifest"]'))return;
   const link=document.createElement('link');
-  link.rel='manifest';link.href=url;
+  link.rel='manifest';
+  link.href='manifest.json';
   document.head.appendChild(link);
 })();
 
@@ -985,20 +1040,18 @@ function hidePwaInstallBanner(){
 }
 
 // ===== SERVICE WORKER =====
-// A dedicated SW file is ideal, but since we're a single HTML file on hosted storage,
-// we build the SW as a blob URL. Cache name includes a version hash for easy updates.
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   const SW_VERSION='myspace-v5';
-  const APP_URL=location.href.split('?')[0]; // canonical URL without query params
+  const APP_PATH=location.pathname; // e.g. /myspace-cms/MySpace-CMS-PWA.html
 
   const swCode=`
 const CACHE='${SW_VERSION}';
-const APP_URL='${APP_URL}';
+const APP_PATH='${location.pathname}';
 
 // On install: pre-cache the app shell immediately
 self.addEventListener('install',e=>{
   e.waitUntil(
-    caches.open(CACHE).then(c=>c.add(APP_URL)).then(()=>self.skipWaiting())
+    caches.open(CACHE).then(c=>c.add(APP_PATH)).then(()=>self.skipWaiting())
   );
 });
 
@@ -1016,15 +1069,15 @@ self.addEventListener('activate',e=>{
 // - Google Fonts → cache-first (offline fallback = empty CSS)
 // - Everything else → network-first, fall back to cache
 self.addEventListener('fetch',e=>{
-  const url=e.request.url;
+  const url=new URL(e.request.url);
 
-  // App shell: serve from cache instantly, refresh in background
-  if(url.split('?')[0]===APP_URL){
+  // App shell: match by pathname only — works regardless of origin/query
+  if(url.pathname===APP_PATH){
     e.respondWith(
       caches.open(CACHE).then(c=>
-        c.match(e.request).then(cached=>{
+        c.match(APP_PATH).then(cached=>{
           const fresh=fetch(e.request).then(resp=>{
-            if(resp&&resp.status===200)c.put(e.request,resp.clone());
+            if(resp&&resp.status===200)c.put(APP_PATH,resp.clone());
             return resp;
           }).catch(()=>null);
           return cached||fresh;
@@ -1035,7 +1088,7 @@ self.addEventListener('fetch',e=>{
   }
 
   // Google Fonts: cache-first, silent fail offline
-  if(url.includes('fonts.googleapis.com')||url.includes('fonts.gstatic.com')){
+  if(url.hostname.includes('googleapis.com')||url.hostname.includes('gstatic.com')){
     e.respondWith(
       caches.open(CACHE).then(c=>
         c.match(e.request).then(cached=>{
