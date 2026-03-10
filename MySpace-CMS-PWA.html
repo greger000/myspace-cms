@@ -745,44 +745,54 @@ function execBlock(tag){
   if(!tag)return;
   const editor=document.getElementById('editorContent');
   editor.focus();
-  restoreSelection();
-  document.execCommand('formatBlock',false,tag);
-  savedRange=null;
+  setTimeout(()=>{
+    restoreSelection();
+    const sel=window.getSelection();
+    // Try native formatBlock first
+    const ok=document.execCommand('formatBlock',false,tag);
+    // If it failed or selection was lost, wrap manually
+    if(!ok&&sel&&sel.rangeCount>0){
+      const range=sel.getRangeAt(0);
+      const block=document.createElement(tag);
+      try{
+        range.surroundContents(block);
+      }catch(e){
+        const frag=range.extractContents();
+        block.appendChild(frag);
+        range.insertNode(block);
+      }
+    }
+    savedRange=null;
+    editor.focus();
+  },0);
 }
 
 function execFontSize(size){
   if(!size)return;
   const editor=document.getElementById('editorContent');
   editor.focus();
-  restoreSelection();
-  const sel=window.getSelection();
-  if(!sel||sel.rangeCount===0)return;
-  const range=sel.getRangeAt(0);
-  if(range.collapsed){
-    // No selection — just set a data attribute the editor can use going forward
-    // (Can't apply font size to a collapsed cursor via execCommand cleanly)
+  setTimeout(()=>{
+    restoreSelection();
+    const sel=window.getSelection();
+    if(!sel||sel.rangeCount===0)return;
+    const range=sel.getRangeAt(0);
+    if(range.collapsed){savedRange=null;return;}
+    const span=document.createElement('span');
+    span.style.fontSize=size;
+    try{
+      range.surroundContents(span);
+    }catch(e){
+      const frag=range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
+    }
+    const newRange=document.createRange();
+    newRange.setStartAfter(span);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
     savedRange=null;
-    return;
-  }
-  // Wrap selected content in a span with font-size style
-  const span=document.createElement('span');
-  span.style.fontSize=size;
-  try{
-    range.surroundContents(span);
-  }catch(e){
-    // surroundContents fails if selection crosses element boundaries
-    // Fall back to extractContents + insertNode
-    const frag=range.extractContents();
-    span.appendChild(frag);
-    range.insertNode(span);
-  }
-  // Move cursor after the span
-  const newRange=document.createRange();
-  newRange.setStartAfter(span);
-  newRange.collapse(true);
-  sel.removeAllRanges();
-  sel.addRange(newRange);
-  savedRange=null;
+  },0);
 }
 function insertLink(){const u=prompt('URL:');if(u)execCmd('createLink',u)}
 
