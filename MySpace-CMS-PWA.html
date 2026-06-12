@@ -109,10 +109,12 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
 .view-cover{width:calc(100% + 32px);margin:-20px -16px 20px;height:240px;object-fit:cover;display:block;border-radius:0}
 .view-title{font-family:var(--font-display);font-size:1.8rem;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
 .view-meta{display:flex;align-items:center;gap:10px;color:var(--text-tertiary);font-size:.75rem;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
-.view-content{font-size:.95rem;line-height:1.85;color:var(--text-primary)}
+.view-content{font-size:.95rem;line-height:1.8;color:var(--text-primary)}
 .view-content h1,.view-content h2,.view-content h3{font-family:var(--font-display);margin:1.5em 0 .5em;line-height:1.3}
 .view-content h1{font-size:1.5rem}.view-content h2{font-size:1.3rem}.view-content h3{font-size:1.15rem}
-.view-content p{margin:0 0 1.2em}
+/* Shared typography: editor and view render content identically (fixes spacing mismatch) */
+.editor-area p,.view-content p{margin:0 0 .6em}
+.editor-area div,.view-content div{margin:0}
 .view-content img{display:block;margin:1.5em auto;border-radius:var(--radius)}
 .view-content blockquote{border-left:3px solid var(--accent);padding:12px 16px;margin:1.5em 0;background:var(--accent-soft);border-radius:0 var(--radius-xs) var(--radius-xs) 0;font-style:italic;color:var(--text-secondary)}
 .view-content pre{background:var(--bg-tertiary);padding:14px 16px;border-radius:var(--radius-sm);overflow-x:auto;font-family:var(--font-mono);font-size:.8rem;margin:1.5em 0;border:1px solid var(--border)}
@@ -252,6 +254,29 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
 
 .tags-wrap{display:flex;flex-wrap:wrap;gap:6px}
 .tags-wrap .tag-pill{padding:6px 12px;font-size:.7rem}
+
+/* === SCROLL TO TOP === */
+.scroll-top{position:fixed;left:16px;bottom:calc(var(--nav-h) + var(--safe-bottom) + 16px);z-index:160;width:44px;height:44px;border-radius:50%;background:var(--bg-card);border:1px solid var(--border);color:var(--accent);display:none;align-items:center;justify-content:center;cursor:pointer;opacity:.65;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:opacity var(--transition),transform var(--transition);-webkit-tap-highlight-color:transparent}
+.scroll-top.visible{display:flex}
+.scroll-top:active{opacity:1;transform:scale(.92)}
+.scroll-top svg{width:20px;height:20px}
+
+/* === MULTI-IMAGE GRID === */
+.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+@media(min-width:480px){.img-grid{grid-template-columns:repeat(3,1fr)}}
+.editor-area .img-grid img,.view-content .img-grid img{width:100%;height:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-xs);margin:0;display:block}
+
+/* === LIGHTBOX (fullscreen image viewer) === */
+.lightbox{display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.93);align-items:center;justify-content:center}
+.lightbox.active{display:flex}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:0}
+.lightbox-close{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;border:none;font-size:1.2rem;cursor:pointer;z-index:701;display:flex;align-items:center;justify-content:center}
+.view-content img{cursor:zoom-in}
+
+/* === TEXT COLOR PALETTE === */
+.color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:4px 24px 8px;justify-items:center}
+.color-swatch{width:44px;height:44px;border-radius:50%;border:2px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--transition);display:flex;align-items:center;justify-content:center;font-size:1rem}
+.color-swatch:active{transform:scale(.88);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -381,6 +406,7 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
       <button class="toolbar-btn" onclick="execCmd('bold')"><b>B</b></button>
       <button class="toolbar-btn" onclick="execCmd('italic')"><i>I</i></button>
       <button class="toolbar-btn" onclick="execCmd('underline')"><u>U</u></button>
+      <button class="toolbar-btn" onclick="openColorSheet()" title="Text color"><span style="display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1"><b>A</b><span style="width:14px;height:3px;border-radius:2px;background:linear-gradient(90deg,#ff4d6a,#f4b400,#00d68f,#00bcd4,#b388ff)"></span></span></button>
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" onclick="execCmd('insertUnorderedList')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></button>
       <button class="toolbar-btn" onclick="execCmd('insertOrderedList')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/></svg></button>
@@ -465,15 +491,33 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
   <button class="sheet-item" onclick="recordVideo();closeSheet()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span data-i18n="recordVideo">Record video with camera</span></button>
   <button class="sheet-item" onclick="insertVidUrl();closeSheet()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span data-i18n="pasteVideoUrl">Paste YouTube/Vimeo URL</span></button>
 </div>
-<input type="file" id="inlineImgFile" accept="image/*" style="display:none">
+<div class="sheet" id="colorSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" data-i18n="textColor">Text Color</div>
+  <div class="color-grid">
+    <button class="color-swatch" style="background:var(--bg-tertiary);color:var(--text-primary);font-weight:700;font-family:var(--font-body)" onclick="applyTextColor('inherit')">A</button>
+    <button class="color-swatch" style="background:#00bcd4" onclick="applyTextColor('#00bcd4')"></button>
+    <button class="color-swatch" style="background:#4d9fff" onclick="applyTextColor('#4d9fff')"></button>
+    <button class="color-swatch" style="background:#b388ff" onclick="applyTextColor('#b388ff')"></button>
+    <button class="color-swatch" style="background:#ff7ab8" onclick="applyTextColor('#ff7ab8')"></button>
+    <button class="color-swatch" style="background:#ff4d6a" onclick="applyTextColor('#ff4d6a')"></button>
+    <button class="color-swatch" style="background:#ff9447" onclick="applyTextColor('#ff9447')"></button>
+    <button class="color-swatch" style="background:#f4b400" onclick="applyTextColor('#f4b400')"></button>
+    <button class="color-swatch" style="background:#00d68f" onclick="applyTextColor('#00d68f')"></button>
+    <button class="color-swatch" style="background:#8892ab" onclick="applyTextColor('#8892ab')"></button>
+  </div>
+</div>
+<input type="file" id="inlineImgFile" accept="image/*" multiple style="display:none">
 <input type="file" id="inlineImgCapture" accept="image/*" capture="environment" style="display:none">
 <input type="file" id="inlineVidFile" accept="video/*" style="display:none">
 <input type="file" id="inlineVidCapture" accept="video/*" capture="environment" style="display:none">
 <div class="toast-area" id="toastArea"></div>
+<button class="scroll-top" id="scrollTopBtn" onclick="scrollToTop()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg></button>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()"><button class="lightbox-close">✕</button><img id="lightboxImg" alt=""></div>
 
 <script>
-const i18n={en:{search:'Search...',new:'New',newPost:'New Post',newPage:'New Page',posts:'Posts',pages:'Pages',home:'Home',settings:'Settings',appearance:'Appearance',darkMode:'Dark Mode',language:'Language',dataBackup:'Data',exportAll:'Export All Data',importBackup:'Import Backup',category:'Category',categories:'Categories',tags:'Tags',tagsLabel:'Tags',pageSlug:'Slug',showInNav:'Show in navigation',coverImage:'Cover',edit:'Edit',delete:'Delete',published:'Published!',draftSaved:'Draft saved.',deleted:'Deleted.',exported:'Exported!',imported:'items imported!',noPosts:'No posts yet',noPostsDesc:'Tap + to create your first post.',noPages:'No pages yet',noPagesDesc:'Tap + to create a page.',noResults:'Nothing found',noResultsDesc:'Try different keywords.',uncategorized:'Uncategorized',draft:'Draft',minRead:'min',page:'Page',startWriting:'Start writing...',categoryPlaceholder:'e.g. Technology',tagsPlaceholder:'ai, work, tips',allPosts:'All Posts',postNumber:'Post #',insertPhoto:'Insert Photo',insertVideo:'Insert Video',fromGallery:'Choose from gallery',takePhoto:'Take photo with camera',pasteUrl:'Paste image URL',fromGalleryVid:'Choose video from gallery',recordVideo:'Record video with camera',pasteVideoUrl:'Paste YouTube/Vimeo URL'},
-ru:{search:'Поиск...',new:'Создать',newPost:'Новый пост',newPage:'Новая страница',posts:'Посты',pages:'Страницы',home:'Главная',settings:'Настройки',appearance:'Оформление',darkMode:'Тёмная тема',language:'Язык',dataBackup:'Данные',exportAll:'Экспорт данных',importBackup:'Импорт бэкапа',category:'Категория',categories:'Категории',tags:'Теги',tagsLabel:'Теги',pageSlug:'Slug',showInNav:'Показать в навигации',coverImage:'Обложка',edit:'Редактировать',delete:'Удалить',published:'Опубликовано!',draftSaved:'Черновик сохранён.',deleted:'Удалено.',exported:'Экспорт готов!',imported:'записей импортировано!',noPosts:'Постов нет',noPostsDesc:'Нажмите + чтобы создать пост.',noPages:'Страниц нет',noPagesDesc:'Нажмите + чтобы создать страницу.',noResults:'Ничего не найдено',noResultsDesc:'Попробуйте другой запрос.',uncategorized:'Без категории',draft:'Черновик',minRead:'мин',page:'Страница',startWriting:'Начните писать...',categoryPlaceholder:'напр. Технологии',tagsPlaceholder:'ai, работа, советы',allPosts:'Все посты',postNumber:'Пост №',insertPhoto:'Вставить фото',insertVideo:'Вставить видео',fromGallery:'Выбрать из галереи',takePhoto:'Сделать фото камерой',pasteUrl:'Вставить URL изображения',fromGalleryVid:'Выбрать видео из галереи',recordVideo:'Записать видео камерой',pasteVideoUrl:'Вставить URL YouTube/Vimeo'}};
+const i18n={en:{search:'Search...',new:'New',newPost:'New Post',newPage:'New Page',posts:'Posts',pages:'Pages',home:'Home',settings:'Settings',appearance:'Appearance',darkMode:'Dark Mode',language:'Language',dataBackup:'Data',exportAll:'Export All Data',importBackup:'Import Backup',category:'Category',categories:'Categories',tags:'Tags',tagsLabel:'Tags',pageSlug:'Slug',showInNav:'Show in navigation',coverImage:'Cover',edit:'Edit',delete:'Delete',published:'Published!',draftSaved:'Draft saved.',deleted:'Deleted.',exported:'Exported!',imported:'items imported!',noPosts:'No posts yet',noPostsDesc:'Tap + to create your first post.',noPages:'No pages yet',noPagesDesc:'Tap + to create a page.',noResults:'Nothing found',noResultsDesc:'Try different keywords.',uncategorized:'Uncategorized',draft:'Draft',minRead:'min',page:'Page',startWriting:'Start writing...',categoryPlaceholder:'e.g. Technology',tagsPlaceholder:'ai, work, tips',allPosts:'All Posts',postNumber:'Post #',insertPhoto:'Insert Photo',insertVideo:'Insert Video',fromGallery:'Choose from gallery',takePhoto:'Take photo with camera',pasteUrl:'Paste image URL',fromGalleryVid:'Choose video from gallery',recordVideo:'Record video with camera',pasteVideoUrl:'Paste YouTube/Vimeo URL',textColor:'Text Color',selectTextFirst:'Select text first'},
+ru:{search:'Поиск...',new:'Создать',newPost:'Новый пост',newPage:'Новая страница',posts:'Посты',pages:'Страницы',home:'Главная',settings:'Настройки',appearance:'Оформление',darkMode:'Тёмная тема',language:'Язык',dataBackup:'Данные',exportAll:'Экспорт данных',importBackup:'Импорт бэкапа',category:'Категория',categories:'Категории',tags:'Теги',tagsLabel:'Теги',pageSlug:'Slug',showInNav:'Показать в навигации',coverImage:'Обложка',edit:'Редактировать',delete:'Удалить',published:'Опубликовано!',draftSaved:'Черновик сохранён.',deleted:'Удалено.',exported:'Экспорт готов!',imported:'записей импортировано!',noPosts:'Постов нет',noPostsDesc:'Нажмите + чтобы создать пост.',noPages:'Страниц нет',noPagesDesc:'Нажмите + чтобы создать страницу.',noResults:'Ничего не найдено',noResultsDesc:'Попробуйте другой запрос.',uncategorized:'Без категории',draft:'Черновик',minRead:'мин',page:'Страница',startWriting:'Начните писать...',categoryPlaceholder:'напр. Технологии',tagsPlaceholder:'ai, работа, советы',allPosts:'Все посты',postNumber:'Пост №',insertPhoto:'Вставить фото',insertVideo:'Вставить видео',fromGallery:'Выбрать из галереи',takePhoto:'Сделать фото камерой',pasteUrl:'Вставить URL изображения',fromGalleryVid:'Выбрать видео из галереи',recordVideo:'Записать видео камерой',pasteVideoUrl:'Вставить URL YouTube/Vimeo',textColor:'Цвет текста',selectTextFirst:'Сначала выделите текст'}};
 
 let lang=localStorage.getItem('cms_lang')||'en',theme=localStorage.getItem('cms_theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'),activeTab='posts',editorMode='post',editingId=null,coverData=null,currentSearch='',currentFilter={type:null,value:null},viewingItem=null;
 const t=k=>i18n[lang]?.[k]||i18n.en[k]||k;
@@ -658,9 +702,9 @@ function showView(item,type){document.getElementById('fabBtn').style.display='no
 const tags=type==='post'?(item.tags||[]).map(tg=>`<span class="tag-pill" onclick="closeView();setTimeout(()=>filterByTag('${esc(tg)}'),100)">${esc(tg)}</span>`).join(''):'';const cat=type==='post'?(item.category||t('uncategorized')):t('page');const pn=type==='post'&&item.postNum!=null?`<span class="view-post-num">#${item.postNum}</span>`:'';
 document.getElementById('viewBody').innerHTML=`${item.cover?`<img class="view-cover" src="${item.cover}">`:''}<div class="view-title">${esc(item.title)}</div><div class="view-meta">${pn}<span class="card-cat">${esc(cat)}</span>${item.slug?`<span class="page-card-slug">/${esc(item.slug)}</span>`:''}<span>${fmtDate(item.updatedAt)}</span>${type==='post'?`<span>${rt(item.content)} ${t('minRead')}</span>`:''} ${item.status==='draft'?`<span style="color:var(--warning);font-weight:700">${t('draft')}</span>`:''}</div><div class="view-content">${item.content}</div>${tags?`<div class="view-tags">${tags}</div>`:''}`;
 document.getElementById('viewEditBtn').onclick=()=>openEditor(type,item.id);document.getElementById('sheetEdit').onclick=()=>{closeSheet();openEditor(type,item.id)};document.getElementById('sheetDelete').onclick=()=>{closeSheet();confirmDel(type,item.id)};
-v.classList.add('active');v.scrollTop=0}
+v.classList.add('active');v.scrollTop=0;updateScrollTopBtn()}
 
-function closeView(){document.getElementById('viewScreen').classList.remove('active');document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display='';viewingItem=null}
+function closeView(){document.getElementById('viewScreen').classList.remove('active');document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display='';viewingItem=null;updateScrollTopBtn()}
 
 // Filters
 function filterByCat(c){closeView();activeTab='posts';switchTab('posts');currentFilter={type:'category',value:c};renderFeed()}
@@ -670,8 +714,8 @@ function handleSearch(){currentSearch=document.getElementById('searchInput').val
 function clearSearch(){currentSearch='';document.getElementById('searchInput').value='';renderFeed()}
 
 // Settings
-function openSettings(){showFeed();document.getElementById('settingsScreen').classList.add('active');document.getElementById('fabBtn').style.display='none';setNav('navSettings');updatePersistDisplay();updateLastExportDisplay();updateStorageDisplay();updatePwaInstallUI()}
-function closeSettings(){document.getElementById('settingsScreen').classList.remove('active');document.getElementById('fabBtn').style.display='';setNav('navHome')}
+function openSettings(){showFeed();document.getElementById('settingsScreen').classList.add('active');document.getElementById('fabBtn').style.display='none';setNav('navSettings');updatePersistDisplay();updateLastExportDisplay();updateStorageDisplay();updatePwaInstallUI();updateScrollTopBtn()}
+function closeSettings(){document.getElementById('settingsScreen').classList.remove('active');document.getElementById('fabBtn').style.display='';setNav('navHome');updateScrollTopBtn()}
 
 // Editor
 function openEditor(mode,id=null){editorMode=mode;editingId=id;const s=document.getElementById('editorScreen'),ti=document.getElementById('editorTitle'),co=document.getElementById('editorContent');
@@ -679,9 +723,9 @@ document.getElementById('editorPostMeta').style.display=mode==='post'?'':'none';
 if(id){const item=mode==='post'?posts.find(p=>p.id===id):pages.find(p=>p.id===id);if(!item)return;ti.value=item.title;co.innerHTML=item.content;coverData=item.cover||null;if(coverData){document.getElementById('coverPreview').style.display='';document.getElementById('coverImg').src=coverData}else document.getElementById('coverPreview').style.display='none';
 if(mode==='post'){document.getElementById('editorCategory').value=item.category||'';document.getElementById('editorTags').value=(item.tags||[]).join(', ');document.getElementById('editorPostNum').value=item.postNum||''}else{document.getElementById('editorSlug').value=item.slug||'';document.getElementById('editorOrder').value=item.order||0;document.getElementById('editorShowInNav').checked=item.showInNav!==false}
 document.getElementById('editorStatus').textContent=item.title}else{ti.value='';co.innerHTML='';coverData=null;document.getElementById('coverPreview').style.display='none';document.getElementById('editorStatus').textContent=t(mode==='post'?'newPost':'newPage');if(mode==='post'){document.getElementById('editorCategory').value='';document.getElementById('editorTags').value='';document.getElementById('editorPostNum').value=''}else{document.getElementById('editorSlug').value='';document.getElementById('editorOrder').value=pages.length;document.getElementById('editorShowInNav').checked=true}}
-closeView();s.classList.add('active');document.getElementById('fabBtn').style.display='none';document.getElementById('tabsBar').style.display='none';ti.focus()}
+closeView();s.classList.add('active');document.getElementById('fabBtn').style.display='none';document.getElementById('tabsBar').style.display='none';ti.focus();updateScrollTopBtn()}
 
-function closeEditor(){document.getElementById('editorScreen').classList.remove('active');editingId=null;coverData=null;document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display=''}
+function closeEditor(){document.getElementById('editorScreen').classList.remove('active');editingId=null;coverData=null;document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display='';updateScrollTopBtn()}
 function getEditorData(){const b={title:document.getElementById('editorTitle').value.trim(),content:document.getElementById('editorContent').innerHTML.trim(),cover:coverData};if(editorMode==='post'){b.category=document.getElementById('editorCategory').value.trim();b.tags=document.getElementById('editorTags').value.split(',').map(tag=>tag.trim()).filter(Boolean);const pn=document.getElementById('editorPostNum').value;b.postNum=pn!==''?parseInt(pn):null}else{b.slug=document.getElementById('editorSlug').value.trim()||slugify(b.title);b.order=parseInt(document.getElementById('editorOrder').value)||0;b.showInNav=document.getElementById('editorShowInNav').checked}return b}
 
 async function saveItem(status){const d=getEditorData();if(!d.title){toast('Title required','error');return}
@@ -796,32 +840,98 @@ function execFontSize(size){
 }
 function insertLink(){const u=prompt('URL:');if(u)execCmd('createLink',u)}
 
+// Text color — same Android-safe selection-restore pattern as execFontSize
+function openColorSheet(){document.getElementById('sheetOverlay').classList.add('active');setTimeout(()=>document.getElementById('colorSheet').classList.add('active'),10)}
+function applyTextColor(color){closeSheet();execTextColor(color)}
+function execTextColor(color){
+  const editor=document.getElementById('editorContent');
+  editor.focus();
+  setTimeout(()=>{
+    restoreSelection();
+    const sel=window.getSelection();
+    if(!sel||sel.rangeCount===0||sel.getRangeAt(0).collapsed){
+      toast(t('selectTextFirst'),'error');
+      savedRange=null;
+      return;
+    }
+    const range=sel.getRangeAt(0);
+    const span=document.createElement('span');
+    span.style.color=color; // 'inherit' resets to the surrounding text color
+    try{
+      range.surroundContents(span);
+    }catch(e){
+      const frag=range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
+    }
+    const newRange=document.createRange();
+    newRange.setStartAfter(span);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    savedRange=null;
+  },0);
+}
+
 // Media insertion — bottom sheets
 function openMediaSheet(){document.getElementById('sheetOverlay').classList.add('active');setTimeout(()=>document.getElementById('mediaSheet').classList.add('active'),10)}
 function openVideoSheet(){document.getElementById('sheetOverlay').classList.add('active');setTimeout(()=>document.getElementById('videoSheet').classList.add('active'),10)}
 
-function pickPhonePhoto(){const i=document.getElementById('inlineImgFile');i.onchange=e=>{handleMediaFile(e.target.files[0],'image');i.value=''};i.click()}
-function takePhoto(){const i=document.getElementById('inlineImgCapture');i.onchange=e=>{handleMediaFile(e.target.files[0],'image');i.value=''};i.click()}
+function pickPhonePhoto(){const i=document.getElementById('inlineImgFile');i.onchange=e=>{handleMediaFiles(e.target.files);i.value=''};i.click()}
+function takePhoto(){const i=document.getElementById('inlineImgCapture');i.onchange=e=>{handleMediaFiles(e.target.files);i.value=''};i.click()}
 function pickPhoneVideo(){const i=document.getElementById('inlineVidFile');i.onchange=e=>{handleMediaFile(e.target.files[0],'video');i.value=''};i.click()}
 function recordVideo(){const i=document.getElementById('inlineVidCapture');i.onchange=e=>{handleMediaFile(e.target.files[0],'video');i.value=''};i.click()}
+
+// Compress a single image file via canvas → JPEG data URL (max width 1200px)
+function compressImage(file){
+  return new Promise(resolve=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let w=img.width,h=img.height;const maxW=1200;
+      if(w>maxW){h=Math.round(h*(maxW/w));w=maxW}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg',0.85));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);resolve(null)};
+    img.src=url;
+  });
+}
+
+// Handle one or many photos: single → full-width image, multiple → grid (2 per row, 3 on wide screens)
+async function handleMediaFiles(fileList){
+  const files=Array.from(fileList||[]).filter(f=>f&&f.type&&f.type.startsWith('image/'));
+  if(!files.length)return;
+  const datas=[];
+  for(const f of files){
+    const d=await compressImage(f);
+    if(d)datas.push(d);
+  }
+  if(!datas.length){toast(lang==='ru'?'Не удалось обработать фото':'Could not process photos','error');return}
+  const editor=document.getElementById('editorContent');
+  editor.focus();
+  restoreSelection();
+  let html;
+  if(datas.length===1){
+    html='<img src="'+datas[0]+'" style="max-width:100%;border-radius:8px;margin:8px 0">';
+  }else{
+    html='<div class="img-grid">'+datas.map(d=>'<img src="'+d+'">').join('')+'</div>';
+  }
+  document.execCommand('insertHTML',false,html+'<p><br></p>');
+  savedRange=null;
+  toast(datas.length===1
+    ?(lang==='ru'?'Фото добавлено':'Photo inserted')
+    :(lang==='ru'?'Добавлено фото: '+datas.length:datas.length+' photos inserted'));
+}
 
 function handleMediaFile(file,type){
   if(!file)return;
   const editor=document.getElementById('editorContent');
   editor.focus();
   if(type==='image'){
-    const img=new Image();const url=URL.createObjectURL(file);
-    img.onload=()=>{
-      let w=img.width,h=img.height;const maxW=1200;
-      if(w>maxW){h=Math.round(h*(maxW/w));w=maxW}
-      const c=document.createElement('canvas');c.width=w;c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      const dataUrl=c.toDataURL('image/jpeg',0.85);
-      document.execCommand('insertHTML',false,'<img src="'+dataUrl+'" style="max-width:100%;border-radius:8px;margin:8px 0"><p><br></p>');
-      URL.revokeObjectURL(url);
-      toast(lang==='ru'?'Фото добавлено':'Photo inserted');
-    };
-    img.src=url;
+    handleMediaFiles([file]);
   }else{
     const r=new FileReader();
     r.onload=ev=>{
@@ -942,8 +1052,46 @@ function dismissBackupReminder(){
   if(b)b.remove();
 }
 
-// Back button handling
-window.addEventListener('popstate',()=>{if(document.getElementById('editorScreen').classList.contains('active'))closeEditor();else if(document.getElementById('viewScreen').classList.contains('active'))closeView();else if(document.getElementById('settingsScreen').classList.contains('active'))closeSettings()});
+// Back button handling — lightbox closes first, then editor → view → settings
+window.addEventListener('popstate',()=>{if(document.getElementById('lightbox').classList.contains('active'))closeLightbox();else if(document.getElementById('editorScreen').classList.contains('active'))closeEditor();else if(document.getElementById('viewScreen').classList.contains('active'))closeView();else if(document.getElementById('settingsScreen').classList.contains('active'))closeSettings()});
+
+// ===== LIGHTBOX (fullscreen image viewer) =====
+function openLightbox(src){
+  document.getElementById('lightboxImg').src=src;
+  document.getElementById('lightbox').classList.add('active');
+  history.pushState({screen:'lightbox'},'');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('active');
+  document.getElementById('lightboxImg').src='';
+}
+// Tap any image inside a post/page (not wrapped in a link) to open it fullscreen
+document.getElementById('viewBody').addEventListener('click',e=>{
+  const img=e.target.closest('img');
+  if(img&&!img.closest('a')&&img.src)openLightbox(img.src);
+});
+
+// ===== SCROLL TO TOP =====
+function updateScrollTopBtn(){
+  const btn=document.getElementById('scrollTopBtn');
+  if(!btn)return;
+  const vs=document.getElementById('viewScreen');
+  const editorOpen=document.getElementById('editorScreen').classList.contains('active');
+  const settingsOpen=document.getElementById('settingsScreen').classList.contains('active');
+  let show=false;
+  if(!editorOpen&&!settingsOpen){
+    if(vs.classList.contains('active'))show=vs.scrollTop>400;   // reading a post/page
+    else show=window.scrollY>400;                               // scrolling the feed
+  }
+  btn.classList.toggle('visible',show);
+}
+function scrollToTop(){
+  const vs=document.getElementById('viewScreen');
+  if(vs.classList.contains('active'))vs.scrollTo({top:0,behavior:'smooth'});
+  else window.scrollTo({top:0,behavior:'smooth'});
+}
+window.addEventListener('scroll',updateScrollTopBtn,{passive:true});
+document.getElementById('viewScreen').addEventListener('scroll',updateScrollTopBtn,{passive:true});
 // Push states for back button — use let aliases so reassignment is safe across all JS engines
 let openEditorNav=openEditor,openSettingsNav=openSettings;
 openEditorNav=function(mode,id){history.pushState({screen:'editor'},'');openEditor(mode,id)};
@@ -1051,7 +1199,7 @@ function hidePwaInstallBanner(){
 
 // ===== SERVICE WORKER =====
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  const SW_VERSION='myspace-v7';
+  const SW_VERSION='myspace-v8';
   const APP_PATH=location.pathname; // e.g. /myspace-cms/MySpace-CMS-PWA.html
 
   const swCode=`
