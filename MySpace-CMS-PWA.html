@@ -269,13 +269,17 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
 .scroll-bottom svg{width:20px;height:20px}
 
 /* === MULTI-IMAGE GRID (legacy square-crop, kept for older posts) === */
-.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px -16px;width:calc(100% + 32px)}
 @media(min-width:480px){.img-grid{grid-template-columns:repeat(3,1fr)}}
 .editor-area .img-grid img,.view-content .img-grid img{width:100%;height:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-xs);margin:0;display:block}
 
 /* === MULTI-IMAGE COLUMNS (masonry — full images, no cropping; full-bleed to post width; column-count set inline) === */
 .img-cols{column-gap:8px;margin:12px -16px;width:calc(100% + 32px)}
 .editor-area .img-cols img,.view-content .img-cols img{width:100%;display:block;margin:0 0 8px;border-radius:var(--radius-xs);break-inside:avoid;-webkit-column-break-inside:avoid}
+
+/* === SAFETY: a nested image container must never subdivide again or compound widths === */
+.img-grid .img-grid,.img-grid .img-cols,.img-cols .img-grid,.img-cols .img-cols{display:block!important;column-count:1!important;grid-template-columns:none!important;width:auto!important;margin:0!important;gap:0!important;column-gap:0!important}
+.img-grid .img-grid img,.img-grid .img-cols img,.img-cols .img-grid img,.img-cols .img-cols img{aspect-ratio:auto!important;height:auto!important;width:100%!important;object-fit:contain!important;margin:0 0 8px!important}
 
 /* === LIGHTBOX (fullscreen image viewer) === */
 .lightbox{display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.93);align-items:center;justify-content:center}
@@ -735,6 +739,7 @@ function showView(item,type){document.getElementById('fabBtn').style.display='no
 const tags=type==='post'?(item.tags||[]).map(tg=>`<span class="tag-pill" onclick="closeView();setTimeout(()=>filterByTag('${esc(tg)}'),100)">${esc(tg)}</span>`).join(''):'';const cat=type==='post'?(item.category||t('uncategorized')):t('page');const pn=type==='post'&&item.postNum!=null?`<span class="view-post-num">#${item.postNum}</span>`:'';
 document.getElementById('viewBody').innerHTML=`${item.cover?`<img class="view-cover" src="${item.cover}">`:''}<div class="view-title">${esc(item.title)}</div><div class="view-meta">${pn}<span class="card-cat">${esc(cat)}</span>${item.slug?`<span class="page-card-slug">/${esc(item.slug)}</span>`:''}<span>${fmtDate(item.updatedAt)}</span> ${item.status==='draft'?`<span style="color:var(--warning);font-weight:700">${t('draft')}</span>`:''}</div><div class="view-content">${item.content}</div>${tags?`<div class="view-tags">${tags}</div>`:''}`;
 document.getElementById('viewEditBtn').onclick=()=>openEditor(type,item.id);document.getElementById('sheetEdit').onclick=()=>{closeSheet();openEditor(type,item.id)};document.getElementById('sheetDelete').onclick=()=>{closeSheet();confirmDel(type,item.id)};
+tidyImageBlocks(document.getElementById('viewBody'));
 v.classList.add('active');v.scrollTop=0;updateScrollTopBtn()}
 
 function closeView(){document.getElementById('viewScreen').classList.remove('active');document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display='';viewingItem=null;updateScrollTopBtn()}
@@ -753,7 +758,7 @@ function closeSettings(){document.getElementById('settingsScreen').classList.rem
 // Editor
 function openEditor(mode,id=null){editorMode=mode;editingId=id;const s=document.getElementById('editorScreen'),ti=document.getElementById('editorTitle'),co=document.getElementById('editorContent');
 document.getElementById('editorPostMeta').style.display=mode==='post'?'':'none';document.getElementById('editorPageMeta').style.display=mode==='page'?'':'none';
-if(id){const item=mode==='post'?posts.find(p=>p.id===id):pages.find(p=>p.id===id);if(!item)return;ti.value=item.title;co.innerHTML=item.content;coverData=item.cover||null;if(coverData){document.getElementById('coverPreview').style.display='';document.getElementById('coverImg').src=coverData}else document.getElementById('coverPreview').style.display='none';
+if(id){const item=mode==='post'?posts.find(p=>p.id===id):pages.find(p=>p.id===id);if(!item)return;ti.value=item.title;co.innerHTML=item.content;tidyImageBlocks(co);coverData=item.cover||null;if(coverData){document.getElementById('coverPreview').style.display='';document.getElementById('coverImg').src=coverData}else document.getElementById('coverPreview').style.display='none';
 if(mode==='post'){document.getElementById('editorCategory').value=item.category||'';document.getElementById('editorTags').value=(item.tags||[]).join(', ');document.getElementById('editorPostNum').value=item.postNum||''}else{document.getElementById('editorSlug').value=item.slug||'';document.getElementById('editorOrder').value=item.order||0;document.getElementById('editorShowInNav').checked=item.showInNav!==false}
 document.getElementById('editorStatus').textContent=item.title}else{ti.value='';co.innerHTML='';coverData=null;document.getElementById('coverPreview').style.display='none';document.getElementById('editorStatus').textContent=t(mode==='post'?'newPost':'newPage');if(mode==='post'){document.getElementById('editorCategory').value='';document.getElementById('editorTags').value='';document.getElementById('editorPostNum').value=''}else{document.getElementById('editorSlug').value='';document.getElementById('editorOrder').value=pages.length;document.getElementById('editorShowInNav').checked=true}}
 closeView();s.classList.add('active');document.getElementById('fabBtn').style.display='none';document.getElementById('tabsBar').style.display='none';ti.focus();updateScrollTopBtn()}
@@ -968,11 +973,50 @@ function insertPendingImages(cols){
   toast(lang==='ru'?'Добавлено фото: '+datas.length:datas.length+' photos inserted');
 }
 
+// Repair messy/nested image markup: flatten nested containers, convert legacy square
+// grids to full-image masonry, and drop empty filler. Safe — only moves existing nodes.
+function tidyImageBlocks(root){
+  if(!root)return;
+  let guard=0;
+  while(guard++<100){
+    const nested=root.querySelector('.img-cols .img-cols,.img-cols .img-grid,.img-grid .img-cols,.img-grid .img-grid');
+    if(!nested)break;
+    const p=nested.parentNode;
+    while(nested.firstChild)p.insertBefore(nested.firstChild,nested);
+    p.removeChild(nested);
+  }
+  root.querySelectorAll('.img-grid').forEach(g=>{
+    g.classList.remove('img-grid');
+    g.classList.add('img-cols');
+    if(!g.style.columnCount)g.style.columnCount=2;
+  });
+  root.querySelectorAll('.img-cols').forEach(c=>{
+    Array.from(c.childNodes).forEach(n=>{
+      if(n.nodeType===1&&n.tagName!=='IMG'&&!n.querySelector('img')&&!n.textContent.trim())n.remove();
+      else if(n.nodeType===3&&!n.textContent.trim())n.remove();
+    });
+  });
+}
+
 // Shared insertion: restore the caret position saved when the picker opened, then insert
 function insertImagesHtml(html){
   const editor=document.getElementById('editorContent');
   editor.focus();
   restoreSelection();
+  // Prevent nesting: if the caret sits inside an existing image block, jump just after it first
+  const sel=window.getSelection();
+  if(sel&&sel.rangeCount){
+    let node=sel.getRangeAt(0).startContainer;
+    if(node&&node.nodeType===3)node=node.parentNode;
+    const container=node&&node.closest?node.closest('.img-cols,.img-grid'):null;
+    if(container&&container.parentNode){
+      const r=document.createRange();
+      r.setStartAfter(container);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
   document.execCommand('insertHTML',false,html+'<p><br></p>');
   savedRange=null;
 }
@@ -1288,7 +1332,7 @@ function hidePwaInstallBanner(){
 
 // ===== SERVICE WORKER =====
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  const SW_VERSION='myspace-v12';
+  const SW_VERSION='myspace-v13';
   const APP_PATH=location.pathname; // e.g. /myspace-cms/MySpace-CMS-PWA.html
 
   const swCode=`
