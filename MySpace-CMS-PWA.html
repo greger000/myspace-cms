@@ -269,13 +269,17 @@ a{color:var(--accent);text-decoration:none}img,video{max-width:100%;border-radiu
 .scroll-bottom svg{width:20px;height:20px}
 
 /* === MULTI-IMAGE GRID (legacy square-crop, kept for older posts) === */
-.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px -16px;width:calc(100% + 32px)}
+.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
 @media(min-width:480px){.img-grid{grid-template-columns:repeat(3,1fr)}}
 .editor-area .img-grid img,.view-content .img-grid img{width:100%;height:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-xs);margin:0;display:block}
 
-/* === MULTI-IMAGE COLUMNS (masonry — full images, no cropping; full-bleed to post width; column-count set inline) === */
-.img-cols{column-gap:8px;margin:12px -16px;width:calc(100% + 32px)}
+/* === MULTI-IMAGE COLUMNS (masonry — full images, no cropping; fills the post width, stays inside the frame; column-count set inline) === */
+.img-cols{column-gap:8px;margin:12px 0}
 .editor-area .img-cols img,.view-content .img-cols img{width:100%;display:block;margin:0 0 8px;border-radius:var(--radius-xs);break-inside:avoid;-webkit-column-break-inside:avoid}
+
+/* Drag-to-reorder: stop the native long-press image popup in the editor, hint draggability */
+.editor-area .img-cols img,.editor-area .img-grid img{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+.editor-area .img-cols img:active,.editor-area .img-grid img:active{cursor:grabbing}
 
 /* === SAFETY: a nested image container must never subdivide again or compound widths === */
 .img-grid .img-grid,.img-grid .img-cols,.img-cols .img-grid,.img-cols .img-cols{display:block!important;column-count:1!important;grid-template-columns:none!important;width:auto!important;margin:0!important;gap:0!important;column-gap:0!important}
@@ -1225,6 +1229,92 @@ function scrollToBottom(){
 }
 window.addEventListener('scroll',updateScrollTopBtn,{passive:true});
 document.getElementById('viewScreen').addEventListener('scroll',updateScrollTopBtn,{passive:true});
+
+// ===== DRAG-TO-REORDER IMAGES (inside an image block, in the editor) =====
+(function(){
+  const editor=document.getElementById('editorContent');
+  if(!editor)return;
+  let drag=null,lpTimer=null,lpStart=null;
+  const imgsOf=c=>Array.from(c.children).filter(n=>n.tagName==='IMG');
+
+  function beginDrag(){
+    if(!lpStart)return;
+    const {img,container,x,y}=lpStart;
+    const rect=img.getBoundingClientRect();
+    const clone=img.cloneNode(true);
+    clone.removeAttribute('class');
+    clone.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;height:'+rect.height+'px;opacity:.92;pointer-events:none;z-index:800;border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.6);transform:scale(1.04);transition:none;object-fit:contain';
+    document.body.appendChild(clone);
+    img.style.opacity='.25';
+    drag={img,container,clone,offX:x-rect.left,offY:y-rect.top,moved:false};
+    if(navigator.vibrate){try{navigator.vibrate(15)}catch(e){}}
+  }
+  function moveDrag(x,y){
+    if(!drag)return;
+    const {clone,img,container,offX,offY}=drag;
+    clone.style.left=(x-offX)+'px';
+    clone.style.top=(y-offY)+'px';
+    clone.style.display='none';
+    const under=document.elementFromPoint(x,y);
+    clone.style.display='';
+    if(!under||!under.closest)return;
+    const target=under.closest('.img-cols img,.img-grid img');
+    if(!target||target===img)return;
+    if(target.closest('.img-cols,.img-grid')!==container)return;
+    const imgs=imgsOf(container);
+    const di=imgs.indexOf(img),ti=imgs.indexOf(target);
+    if(di<0||ti<0)return;
+    if(di<ti)container.insertBefore(img,target.nextSibling);
+    else container.insertBefore(img,target);
+    drag.moved=true;
+  }
+  function endDrag(){
+    if(!drag)return;
+    drag.clone.remove();
+    drag.img.style.opacity='';
+    const moved=drag.moved;
+    drag=null;
+    if(moved)toast(lang==='ru'?'Порядок изменён':'Order updated');
+  }
+  function cancelLP(){if(lpTimer){clearTimeout(lpTimer);lpTimer=null}lpStart=null}
+
+  editor.addEventListener('touchstart',e=>{
+    if(drag||e.touches.length!==1)return;
+    const target=e.target.closest&&e.target.closest('.img-cols img,.img-grid img');
+    if(!target)return;
+    const container=target.closest('.img-cols,.img-grid');
+    if(!container)return;
+    const t=e.touches[0];
+    lpStart={img:target,container,x:t.clientX,y:t.clientY};
+    lpTimer=setTimeout(beginDrag,350);
+  },{passive:true});
+  editor.addEventListener('touchmove',e=>{
+    if(drag){e.preventDefault();const t=e.touches[0];moveDrag(t.clientX,t.clientY);return}
+    if(lpStart){const t=e.touches[0];if(Math.abs(t.clientX-lpStart.x)>10||Math.abs(t.clientY-lpStart.y)>10)cancelLP()}
+  },{passive:false});
+  editor.addEventListener('touchend',()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null}if(drag)endDrag();lpStart=null});
+  editor.addEventListener('touchcancel',()=>{cancelLP();if(drag)endDrag()});
+
+  editor.addEventListener('mousedown',e=>{
+    if(drag||e.button!==0)return;
+    const target=e.target.closest&&e.target.closest('.img-cols img,.img-grid img');
+    if(!target)return;
+    const container=target.closest('.img-cols,.img-grid');
+    if(!container)return;
+    lpStart={img:target,container,x:e.clientX,y:e.clientY};
+    const onMove=ev=>{
+      if(!drag&&lpStart&&(Math.abs(ev.clientX-lpStart.x)>6||Math.abs(ev.clientY-lpStart.y)>6))beginDrag();
+      if(drag){ev.preventDefault();moveDrag(ev.clientX,ev.clientY)}
+    };
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);if(drag)endDrag();lpStart=null};
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    e.preventDefault();
+  });
+
+  editor.addEventListener('dragstart',e=>{if(e.target.closest&&e.target.closest('.img-cols,.img-grid'))e.preventDefault()});
+  editor.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('.img-cols,.img-grid'))e.preventDefault()});
+})();
 // Push states for back button — use let aliases so reassignment is safe across all JS engines
 let openEditorNav=openEditor,openSettingsNav=openSettings;
 openEditorNav=function(mode,id){history.pushState({screen:'editor'},'');openEditor(mode,id)};
@@ -1332,7 +1422,7 @@ function hidePwaInstallBanner(){
 
 // ===== SERVICE WORKER =====
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  const SW_VERSION='myspace-v13';
+  const SW_VERSION='myspace-v15';
   const APP_PATH=location.pathname; // e.g. /myspace-cms/MySpace-CMS-PWA.html
 
   const swCode=`
