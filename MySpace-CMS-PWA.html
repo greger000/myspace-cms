@@ -764,7 +764,7 @@ function openEditor(mode,id=null){editorMode=mode;editingId=id;const s=document.
 document.getElementById('editorPostMeta').style.display=mode==='post'?'':'none';document.getElementById('editorPageMeta').style.display=mode==='page'?'':'none';
 if(id){const item=mode==='post'?posts.find(p=>p.id===id):pages.find(p=>p.id===id);if(!item)return;ti.value=item.title;co.innerHTML=item.content;tidyImageBlocks(co);coverData=item.cover||null;if(coverData){document.getElementById('coverPreview').style.display='';document.getElementById('coverImg').src=coverData}else document.getElementById('coverPreview').style.display='none';
 if(mode==='post'){document.getElementById('editorCategory').value=item.category||'';document.getElementById('editorTags').value=(item.tags||[]).join(', ');document.getElementById('editorPostNum').value=item.postNum||''}else{document.getElementById('editorSlug').value=item.slug||'';document.getElementById('editorOrder').value=item.order||0;document.getElementById('editorShowInNav').checked=item.showInNav!==false}
-document.getElementById('editorStatus').textContent=item.title}else{ti.value='';co.innerHTML='';coverData=null;document.getElementById('coverPreview').style.display='none';document.getElementById('editorStatus').textContent=t(mode==='post'?'newPost':'newPage');if(mode==='post'){document.getElementById('editorCategory').value='';document.getElementById('editorTags').value='';document.getElementById('editorPostNum').value=''}else{document.getElementById('editorSlug').value='';document.getElementById('editorOrder').value=pages.length;document.getElementById('editorShowInNav').checked=true}}
+document.getElementById('editorStatus').textContent=item.title}else{ti.value='';co.innerHTML='';coverData=null;document.getElementById('coverPreview').style.display='none';document.getElementById('editorStatus').textContent=t(mode==='post'?'newPost':'newPage');if(mode==='post'){document.getElementById('editorCategory').value='';document.getElementById('editorTags').value='';document.getElementById('editorPostNum').value=''}else{document.getElementById('editorSlug').value='';document.getElementById('editorOrder').value=pages.length+1;document.getElementById('editorShowInNav').checked=true}}
 closeView();s.classList.add('active');document.getElementById('fabBtn').style.display='none';document.getElementById('tabsBar').style.display='none';ti.focus();updateScrollTopBtn()}
 
 function closeEditor(){document.getElementById('editorScreen').classList.remove('active');editingId=null;coverData=null;document.getElementById('fabBtn').style.display='';document.getElementById('tabsBar').style.display='';updateScrollTopBtn()}
@@ -788,6 +788,9 @@ if(savedMode==='post'){
   renumberPosts();
   const numbered=posts.filter(p=>p.postNum!=null);
   for(const p of numbered) await idbPut(STORE_POSTS,p);
+}else{
+  renumberPages();
+  for(const p of pages) await idbPut(STORE_PAGES,p);
 }
 const msg=status==='published'?t('published'):t('draftSaved');
 closeEditor();
@@ -1050,11 +1053,19 @@ async function confirmDel(type,id){if(!confirm(t('delete')+'?'))return;
 const storeName=type==='post'?STORE_POSTS:STORE_PAGES;
 try{await idbDelete(storeName,id)}catch(e){toast('Delete failed','error');return}
 if(type==='post'){posts=posts.filter(p=>p.id!==id);renumberPosts();for(const p of posts)await idbPut(STORE_POSTS,p)}
-else pages=pages.filter(p=>p.id!==id);
+else{pages=pages.filter(p=>p.id!==id);renumberPages();for(const p of pages)await idbPut(STORE_PAGES,p)}
 closeView();renderAll();toast(t('deleted'));updateStorageDisplay()}
 
 // Auto-renumber posts after deletion: keeps sequential order without gaps
 function renumberPosts(){const numbered=posts.filter(p=>p.postNum!=null).sort((a,b)=>a.postNum-b.postNum);numbered.forEach((p,i)=>{p.postNum=i+1})}
+
+// Auto-renumber pages 1..N by their current order, removing duplicates/gaps. Returns true if anything changed.
+function renumberPages(){
+  const ordered=[...pages].sort((a,b)=>(a.order||0)-(b.order||0));
+  let changed=false;
+  ordered.forEach((p,i)=>{if(p.order!==i+1){p.order=i+1;changed=true}});
+  return changed;
+}
 
 // Export/Import
 function exportData(){
@@ -1333,6 +1344,8 @@ document.documentElement.setAttribute('data-theme',theme);
 (async()=>{
   try{
     await loadAllData();
+    // Heal any existing duplicate/gap page numbering (e.g. 1,2,2 -> 1,2,3)
+    if(renumberPages()){for(const p of pages) await idbPut(STORE_PAGES,p);}
   }catch(e){
     console.error('DB load failed, falling back to empty state',e);
   }
@@ -1422,7 +1435,7 @@ function hidePwaInstallBanner(){
 
 // ===== SERVICE WORKER =====
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  const SW_VERSION='myspace-v15';
+  const SW_VERSION='myspace-v16';
   const APP_PATH=location.pathname; // e.g. /myspace-cms/MySpace-CMS-PWA.html
 
   const swCode=`
